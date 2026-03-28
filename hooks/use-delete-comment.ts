@@ -1,9 +1,8 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { useSupabaseClient } from "@/lib/supabase";
+import { deleteComment } from "@/lib/actions";
 import { toast } from "sonner";
 
 export default function useDeleteComment() {
-  const { getAuthenticatedClient } = useSupabaseClient();
   const queryClient = useQueryClient();
 
   return useMutation({
@@ -14,13 +13,7 @@ export default function useDeleteComment() {
       commentId: string;
       postId: string;
     }) => {
-      const supabase = await getAuthenticatedClient();
-      const { error } = await supabase
-        .from("comments")
-        .delete()
-        .eq("id", commentId);
-
-      if (error) throw error;
+      await deleteComment(commentId);
       return { commentId, postId };
     },
     onSuccess: (data) => {

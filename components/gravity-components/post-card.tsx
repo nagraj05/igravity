@@ -113,7 +113,7 @@ export default function PostCard({ post }: PostCardProps) {
         });
         setFormattedCode(formatted);
       } catch (error) {
-        console.error("Prettier formatting error:", error);
+        // Silently fail and use original content for invalid code snippets
         setFormattedCode(post.content);
       }
     };

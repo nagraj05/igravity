@@ -20,8 +20,8 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useUser } from "@clerk/nextjs";
 import { LANGUAGES } from "@/constants/languages";
 import { EMOJIS } from "@/constants/emojis";
-import { useSupabaseClient } from "@/lib/supabase";
 import { toast } from "sonner";
+import { upload } from "@vercel/blob/client";
 
 type PostType = "text" | "image" | "link" | "code";
 
@@ -46,7 +46,6 @@ export default function PostComposer({
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
-  const { getAuthenticatedClient } = useSupabaseClient();
 
   const MAX_LENGTH = type === "code" ? 2000 : 500;
 
@@ -90,22 +89,12 @@ export default function PostComposer({
 
     try {
       if (type === "image" && selectedFile) {
-        const supabase = await getAuthenticatedClient();
-        const fileExt = selectedFile.name.split(".").pop();
-        const fileName = `${Math.random().toString(36).substring(2)}-${Date.now()}.${fileExt}`;
-        const filePath = `post-attachments/${user?.id}/${fileName}`;
+        const blob = await upload(selectedFile.name, selectedFile, {
+          access: "public",
+          handleUploadUrl: "/api/upload",
+        });
 
-        const { data, error } = await supabase.storage
-          .from("post-attachments")
-          .upload(filePath, selectedFile);
-
-        if (error) throw error;
-
-        const {
-          data: { publicUrl },
-        } = supabase.storage.from("post-attachments").getPublicUrl(filePath);
-
-        finalLink = publicUrl;
+        finalLink = blob.url;
         mediaType = selectedFile.type.startsWith("image/gif") ? "gif" : "image";
       } else if (type === "image" || type === "link") {
         let url = secondaryInput.trim();

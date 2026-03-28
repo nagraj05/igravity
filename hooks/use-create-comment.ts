@@ -1,5 +1,5 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { useSupabaseClient } from "@/lib/supabase";
+import { createComment } from "@/lib/actions";
 import { useUser } from "@clerk/nextjs";
 import { toast } from "sonner";
 
@@ -10,7 +10,6 @@ interface CreateCommentData {
 }
 
 export default function useCreateComment() {
-  const { getAuthenticatedClient } = useSupabaseClient();
   const { user } = useUser();
   const queryClient = useQueryClient();
 
@@ -18,20 +17,11 @@ export default function useCreateComment() {
     mutationFn: async ({ postId, parentId, content }: CreateCommentData) => {
       if (!user) throw new Error("Unauthorized");
 
-      const supabase = await getAuthenticatedClient();
-      const { data, error } = await supabase
-        .from("comments")
-        .insert({
-          post_id: postId,
-          parent_id: parentId || null,
-          content,
-          clerk_user_id: user.id,
-        })
-        .select()
-        .single();
-
-      if (error) throw error;
-      return data;
+      return await createComment({
+        postId,
+        parentId: parentId || null,
+        content,
+      });
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({
