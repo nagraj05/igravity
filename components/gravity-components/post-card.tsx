@@ -43,7 +43,7 @@ interface PostCardProps {
     content: string;
     link: string | null;
     media_type: string | null;
-    created_at: string;
+    created_at: Date | string;
     profiles: {
       username: string;
       first_name: string;
