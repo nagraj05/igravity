@@ -1,34 +1,39 @@
-import { handleUpload, type HandleUploadBody } from '@vercel/blob/client';
+import { put } from '@vercel/blob';
 import { NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 
+const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+const MAX_SIZE = 5 * 1024 * 1024; // 5MB
+
 export async function POST(request: Request): Promise<NextResponse> {
-  const body = (await request.json()) as HandleUploadBody;
+  const { userId } = await auth();
+  if (!userId) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
+  const formData = await request.formData();
+  const file = formData.get('file') as File | null;
+
+  if (!file) {
+    return NextResponse.json({ error: 'No file provided' }, { status: 400 });
+  }
+
+  if (!ALLOWED_TYPES.includes(file.type)) {
+    return NextResponse.json({ error: `File type "${file.type}" is not allowed` }, { status: 400 });
+  }
+
+  if (file.size > MAX_SIZE) {
+    return NextResponse.json({ error: 'File size must be less than 5MB' }, { status: 400 });
+  }
 
   try {
-    const jsonResponse = await handleUpload({
-      body,
-      request,
-      onBeforeGenerateToken: async (pathname) => {
-        const { userId } = await auth();
-        if (!userId) throw new Error('Unauthorized');
-
-        return {
-          allowedContentTypes: ['image/jpeg', 'image/png', 'image/gif', 'image/webp'],
-          tokenPayload: JSON.stringify({ userId }),
-        };
-      },
-      onUploadCompleted: async ({ blob, tokenPayload }) => {
-        console.log('blob upload completed', blob, tokenPayload);
-      },
-    });
-
-    return NextResponse.json(jsonResponse);
+    const blob = await put(file.name, file, { access: 'public' });
+    return NextResponse.json({ url: blob.url });
   } catch (error) {
     console.error('Vercel Blob Upload Error:', error);
     return NextResponse.json(
-      { error: (error as Error).message },
-      { status: 400 },
+      { error: (error as Error).message || 'Upload failed' },
+      { status: 500 },
     );
   }
 }

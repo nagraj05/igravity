@@ -129,11 +129,21 @@ export async function deletePost(postId: string) {
   const { userId } = await auth();
   if (!userId) throw new Error("Unauthorized");
 
+  // Verify ownership
+  const post = await db.query.posts.findFirst({
+    where: eq(posts.id, postId),
+  });
+
+  if (!post || post.clerk_user_id !== userId) {
+    throw new Error("Unauthorized to delete this post");
+  }
+
   await db
     .delete(posts)
     .where(eq(posts.id, postId));
 
   revalidatePath("/");
+  revalidatePath("/home");
 }
 
 // --- Comments ---
@@ -173,6 +183,15 @@ export async function createComment(data: {
 export async function deleteComment(commentId: string) {
   const { userId } = await auth();
   if (!userId) throw new Error("Unauthorized");
+
+  // Verify ownership
+  const comment = await db.query.comments.findFirst({
+    where: eq(comments.id, commentId),
+  });
+
+  if (!comment || comment.clerk_user_id !== userId) {
+    throw new Error("Unauthorized to delete this comment");
+  }
 
   await db.delete(comments).where(eq(comments.id, commentId));
 }

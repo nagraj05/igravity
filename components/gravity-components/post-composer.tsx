@@ -21,7 +21,6 @@ import { useUser } from "@clerk/nextjs";
 import { LANGUAGES } from "@/constants/languages";
 import { EMOJIS } from "@/constants/emojis";
 import { toast } from "sonner";
-import { upload } from "@vercel/blob/client";
 
 type PostType = "text" | "image" | "link" | "code";
 
@@ -89,13 +88,22 @@ export default function PostComposer({
 
     try {
       if (type === "image" && selectedFile) {
-        const blob = await upload(selectedFile.name, selectedFile, {
-          access: "public",
-          handleUploadUrl: "/api/upload",
+        const formData = new FormData();
+        formData.append("file", selectedFile);
+
+        const response = await fetch("/api/upload", {
+          method: "POST",
+          body: formData,
         });
 
-        finalLink = blob.url;
-        mediaType = selectedFile.type.startsWith("image/gif") ? "gif" : "image";
+        const data = await response.json();
+
+        if (!response.ok) {
+          throw new Error(data.error || "Upload failed");
+        }
+
+        finalLink = data.url;
+        mediaType = selectedFile.type === "image/gif" ? "gif" : "image";
       } else if (type === "image" || type === "link") {
         let url = secondaryInput.trim();
         if (url && !url.startsWith("http://") && !url.startsWith("https://")) {
