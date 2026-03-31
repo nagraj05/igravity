@@ -20,7 +20,6 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useUser } from "@clerk/nextjs";
 import { LANGUAGES } from "@/constants/languages";
 import { EMOJIS } from "@/constants/emojis";
-import { useSupabaseClient } from "@/lib/supabase";
 import { toast } from "sonner";
 
 type PostType = "text" | "image" | "link" | "code";
@@ -46,7 +45,6 @@ export default function PostComposer({
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
-  const { getAuthenticatedClient } = useSupabaseClient();
 
   const MAX_LENGTH = type === "code" ? 2000 : 500;
 
@@ -90,23 +88,22 @@ export default function PostComposer({
 
     try {
       if (type === "image" && selectedFile) {
-        const supabase = await getAuthenticatedClient();
-        const fileExt = selectedFile.name.split(".").pop();
-        const fileName = `${Math.random().toString(36).substring(2)}-${Date.now()}.${fileExt}`;
-        const filePath = `post-attachments/${user?.id}/${fileName}`;
+        const formData = new FormData();
+        formData.append("file", selectedFile);
 
-        const { data, error } = await supabase.storage
-          .from("post-attachments")
-          .upload(filePath, selectedFile);
+        const response = await fetch("/api/upload", {
+          method: "POST",
+          body: formData,
+        });
 
-        if (error) throw error;
+        const data = await response.json();
 
-        const {
-          data: { publicUrl },
-        } = supabase.storage.from("post-attachments").getPublicUrl(filePath);
+        if (!response.ok) {
+          throw new Error(data.error || "Upload failed");
+        }
 
-        finalLink = publicUrl;
-        mediaType = selectedFile.type.startsWith("image/gif") ? "gif" : "image";
+        finalLink = data.url;
+        mediaType = selectedFile.type === "image/gif" ? "gif" : "image";
       } else if (type === "image" || type === "link") {
         let url = secondaryInput.trim();
         if (url && !url.startsWith("http://") && !url.startsWith("https://")) {

@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { useSupabaseClient } from "@/lib/supabase";
+import { getUserPosts } from "@/lib/actions";
 
 interface Post {
   id: string;
@@ -7,7 +7,7 @@ interface Post {
   content: string;
   link: string | null;
   media_type: string | null;
-  created_at: string;
+  created_at: Date;
   profiles: {
     username: string;
     first_name: string;
@@ -17,32 +17,21 @@ interface Post {
 }
 
 export default function useFetchUserPosts(userId?: string) {
-  const { getAuthenticatedClient } = useSupabaseClient();
-
   return useQuery({
     queryKey: ["user-posts", userId],
     queryFn: async () => {
       if (!userId) return [];
-
-      const supabase = await getAuthenticatedClient();
-      const { data, error } = await supabase
-        .from("posts")
-        .select(
-          `
-          *,
-          profiles (
-            username,
-            first_name,
-            last_name,
-            image_url
-          )
-        `,
-        )
-        .eq("clerk_user_id", userId)
-        .order("created_at", { ascending: false });
-
-      if (error) throw error;
-      return data as Post[];
+      const data = await getUserPosts(userId);
+      
+      return data.map((post) => ({
+        ...post,
+        profiles: post.user ? {
+          username: post.user.username || "",
+          first_name: post.user.first_name || "",
+          last_name: post.user.last_name || "",
+          image_url: post.user.image_url || "",
+        } : null
+      })) as unknown as Post[];
     },
     enabled: !!userId,
   });

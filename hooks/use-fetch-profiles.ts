@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { useSupabaseClient } from "@/lib/supabase";
+import { getRandomProfiles } from "@/lib/actions";
 import { useUser } from "@clerk/nextjs";
 
 export interface Profiles {
@@ -9,31 +9,18 @@ export interface Profiles {
   last_name: string;
   image_url: string;
   bio: string | null;
-  created_at: string;
-}
-
-function shuffleArray<T>(array: T[]) {
-  return array.sort(() => Math.random() - 0.5);
+  created_at: Date;
 }
 
 export function useFetchProfiles() {
-  const { getAuthenticatedClient } = useSupabaseClient();
   const { user } = useUser();
 
   return useQuery({
     queryKey: ["profiles", user?.id],
     enabled: !!user?.id,
     queryFn: async () => {
-      const supabase = await getAuthenticatedClient();
-
-      const { data, error } = await supabase
-        .from("profiles")
-        .select("*")
-        .neq("clerk_user_id", user!.id); 
-
-      if (error) throw error;
-
-      return shuffleArray(data ?? []).slice(0, 3);
+      const data = await getRandomProfiles(user?.id);
+      return data as unknown as Profiles[];
     },
   });
 }

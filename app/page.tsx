@@ -1,5 +1,7 @@
+"use client";
+
 import Header from "@/components/gravity-components/Header";
-import { JSX } from "react";
+import { JSX, useState, useEffect } from "react";
 import StarBackground from "@/components/gravity-components/landing-page/StarBackground";
 import FloatingBlobs from "@/components/gravity-components/landing-page/FloatingBlobs";
 import HeroSection from "@/components/gravity-components/landing-page/HeroSection";
@@ -9,6 +11,14 @@ import { ClerkLoaded, ClerkLoading } from "@clerk/nextjs";
 import Loader from "@/components/gravity-components/loader";
 
 export default function Home(): JSX.Element {
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  if (!mounted) return <Loader />;
+
   return (
     <>
       <ClerkLoading>
